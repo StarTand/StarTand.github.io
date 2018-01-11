@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>star</title>
+    <!-- <script src="three.js"></script> -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/88/three.min.js"></script>
+    <script src="star.js"></script>
+  </head>
+  <body>
+    <canvas id="myCanvas"></canvas>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/88/three.min.js"></script>
+    <script>
+      (function() {
+        console.log("1");
+        var scene;
+        var box;
+        var renderer;
+        var width = window.parent.screen.width;
+        var height = window.parent.screen.height;
+
+        scene = new THREE.Mesh(
+          new THREE.BoxGeometry(50,50,50),
+          new THREE.MeshLambertMaterial({color:0xff0000})
+        );
+        box.position.set(0,0,0);
+        scene.add(box);
+        camera = new THREE.PerspectiveCamera(45, width/height, 1, 10)
+        camera.position.set(200,100,300);
+        camera.lookAt(scene.position);
+        console.log("10");
+
+        renderer = new THREE.WebGLRenderer({antialias:true});
+        renderer.setSize(width,height);
+        renderer.setClearColor(0xefefef);
+        renderer.setPixelRatio(window.devicePixelRatio);
+        document.getElementsById('stage').appendChild(renderer.domElement)
+        renderer.render(scene, camera);
+        console.log("100");
+      })
+    </script>
+  </body>
+</html>
