@@ -1,0 +1,25 @@
+/* Full screen canvas */
+/* canvas, html, body {
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  margin: 0;
+  padding: 0;
+} */
+
+/* Counter div at top */
+/* #counter {
+  width: 100%;
+  position: fixed;
+  top: 0;
+  font-family: "Comic Sans MS";
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -khtml-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+} */
+
+body { margin: 0; }
+canvas { width: 100%; height: 100% }
