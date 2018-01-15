@@ -36,13 +36,29 @@ class WorldManager {
     this.World.addBody(planeBody);
     return planeBody;
   }
-  // min から max までの乱数を返す関数
-  GetRandomArbitary(min, max) {
-    return Math.random() * (max - min) + min;
+  // ボールの速度を抑制する.
+  BallSpeedControl() {
+    var ballList = this.PhysicsManagerIns.BallList;
+    var limitOfVelocity = this.PhysicsManagerIns.LimitOfVelocity;
+    var decelerationRate = this.PhysicsManagerIns.DecelerationRate;
+    for (var i = 0; i < ballList.length; i++) {
+      // x velocity deceleration.
+      if (ballList[i].velocity[0] > limitOfVelocity) {
+        ballList[i].velocity[0] -= decelerationRate;
+      }
+      // x velocity deceleration.
+      if (ballList[i].velocity[1] > limitOfVelocity) {
+        ballList[i].velocity[1] -= decelerationRate;
+      }
+    }
   }
   // 数値をワールド座標に変換する.
   static ScaleToWorld(value) {
     return value*(window.innerWidth * window.devicePixelRatio/100)
+  }
+  // min から max までの乱数を返す関数
+  static GetRandomArbitary(min, max) {
+    return Math.random() * (max - min) + min;
   }
 }
 // Ballの基本設定が入るクラス.
@@ -50,8 +66,9 @@ class BallSetting {
   constructor() {
     this.BallRadius = 3;
     this.BallZoomRadius = 6;
-    this.BallVelocity = 0.1;
-    this.LimitOfVelocity = 0.5;
+    this.BallVelocity = 2.8;
+    this.LimitOfVelocity = 3.6;
+    this.DecelerationRate = 0.5; // LimitOfVelocityを上回る速度のときの減速の勢い.
     this.Zoom = false;
     this.BallList = [];
   }
@@ -64,8 +81,8 @@ class PhysicsManager extends BallSetting {
   CreateBall(world) {
     // Create balls.
     for (var i = 0; i<5; i++) {
-      var ballXPos = this.GetRandomArbitary(-WorldManager.ScaleToWorld(3), WorldManager.ScaleToWorld(3));
-      var ballYPos = this.GetRandomArbitary(-WorldManager.ScaleToWorld(1), WorldManager.ScaleToWorld(1));
+      var ballXPos = WorldManager.GetRandomArbitary(-WorldManager.ScaleToWorld(3), WorldManager.ScaleToWorld(3));
+      var ballYPos = WorldManager.GetRandomArbitary(-WorldManager.ScaleToWorld(1), WorldManager.ScaleToWorld(1));
       // create ball body.
       let ballBody = new p2.Body({
         mass: 0.1,
@@ -81,17 +98,14 @@ class PhysicsManager extends BallSetting {
       world.addBody(ballBody);
     }
   }
-  // Add force to ball.
+  // ボールに力を与える.
   AddForce() {
-    var force = [this.GetRandomArbitary(-this.BallVelocity,this.BallVelocity)
-      ,this.GetRandomArbitary(-this.BallVelocity,this.BallVelocity)];// 12.
-    this.BallList.forEach(function(ball) {
-      ball.applyForce(force);
-    });
-  }
-  // min から max までの乱数を返す関数
-  GetRandomArbitary(min, max) {
-    return Math.random() * (max - min) + min;
+    for (var i = 0; i < this.BallList.length; i++) {
+      var randX = WorldManager.GetRandomArbitary(-this.BallVelocity,this.BallVelocity);
+      var randY = WorldManager.GetRandomArbitary(-this.BallVelocity,this.BallVelocity);
+      var force = [randX, randY];
+      this.BallList[i].applyForce(force);
+    }
   }
 }
 // three.jsを利用して描画するクラス.
@@ -149,11 +163,13 @@ function PhysicsAnimate(time){
 
   lastTime = time;
 
-  // マウス移動時にマウス位置にボールを追従させる処理.
+  // マウスドラッグ時にマウス位置にボールを追従させる処理.
   if (holdBall.length > 1) {
     holdBall[0].position[0] = mousePosition.x;
     holdBall[0].position[1] = mousePosition.y;
   }
+  // ボールのスピードを抑制する.
+  WorldManagerIns.BallSpeedControl();
 }
 function DrawAnimate(){
   requestAnimationFrame(DrawAnimate);
