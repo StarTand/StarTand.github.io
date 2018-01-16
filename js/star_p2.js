@@ -103,6 +103,7 @@ class Ball {
     this.BallId = ballId;
     this.PhyBall.BallId = ballId;
     this.DrawBall.BallId = ballId;
+    this.ZoomFlag = false;
   }
 }
 // 物理演算用のクラス.
@@ -162,10 +163,115 @@ class DrawManager extends BallSetting {
     return mshBall;
   }
 }
+// マウスイベントを管理するクラス.
+class MouseManager {
+  constructor() {
+    this.holdBall;   // ドラッグしているボールを格納する.
+    this.selectBall; // ダブルクリックしたボールの情報を格納する.
+    this.mousePosition = new THREE.Vector2();
+  }
+  MouseDown(cX, cY, worldManagerIns){
+
+    // オブジェクトの取得
+    var intersects = this.GetIntersectObjects(cX, cY
+      , worldManagerIns.DrawManagerIns.camera, worldManagerIns.DrawManagerIns.scene);
+
+    // ボールをクリックしている時.
+    if (intersects[0]) {
+      // マウス位置をワールド座標に変換して保持する.
+      this.mousePosition = this.CameraTransformToWorld(cX, cY
+        , worldManagerIns.DrawManagerIns.camera);
+
+      // どのボールをクリックしたか判定する.
+      var ballList = worldManagerIns.BallList;
+      for (i=0;i<ballList.length;i++) {
+        if(ballList[i].BallId == intersects[0].object.BallId) {
+          console.log(ballList[i]);
+          this.holdBall = ballList[i];
+        }
+      }
+    }
+  }
+  MouseWhileClick() {
+    if (this.holdBall) {
+      this.holdBall.PhyBall.position[0] = this.mousePosition.x;
+      this.holdBall.PhyBall.position[1] = this.mousePosition.y;
+    }
+  }
+  MouseMove(cX, cY, worldManagerIns) {
+    // マウスクリック時のX,y座標
+    this.mousePosition = this.CameraTransformToWorld(cX, cY, worldManagerIns.DrawManagerIns.camera);
+
+    if (this.holdBall) {
+      this.holdBall.PhyBall.position[0] = this.mousePosition.x;
+      this.holdBall.PhyBall.position[1] = this.mousePosition.y;
+    }
+  }
+  MouseUp() {
+    this.holdBall = null;
+  }
+  MouseDblClick(cX, cY, worldManagerIns){
+    // オブジェクトの取得
+    var intersects = this.GetIntersectObjects(cX, cY
+      , worldManagerIns.DrawManagerIns.camera, worldManagerIns.DrawManagerIns.scene);
+
+    // ボールをダブルクリックしていれば.
+    if (intersects[0]) {
+      var _selectBall;
+      // 物理オブジェクトと描画オブジェクトをBallIdで照合.
+      var ballList = worldManagerIns.BallList;
+      for (i=0;i<ballList.length;i++) {
+        if(ballList[i].BallId == intersects[0].object.BallId) {
+          _selectBall = ballList[i];
+        }
+      }
+
+      // 物理オブジェクトと描画オブジェクトを2倍に拡大.
+      _selectBall.PhyBall.shapes[0].radius *= 2;
+      _selectBall.DrawBall.scale.set(2,2,1);
+      _selectBall.ZoomFlag = true;
+
+      // 選択していたボールは縮小する.
+      if (this.selectBall) {
+        this.selectBall.PhyBall.shapes[0].radius *= 0.5;
+        this.selectBall.DrawBall.scale.set(1,1,1);
+        this.selectBall.ZoomFlag = false;
+      }
+      // .
+      this.selectBall = _selectBall;
+    }
+  }
+  CameraTransformToWorld(cX, cY, camera) {
+    var mouse = new THREE.Vector2();
+    mouse.x = (cX / window.innerWidth) * 2 - 1;
+    mouse.y = - (cY / window.innerHeight) * 2 + 1;
+
+    var vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
+    vector.unproject( camera );
+    var dir = vector.sub( camera.position ).normalize();
+    var distance = - camera.position.z / dir.z;
+    var pos = camera.position.clone().add( dir.multiplyScalar( distance ) );
+
+    return pos;
+  }
+  // マウス位置と交わるオブジェクトを取得する.
+  GetIntersectObjects(cX, cY, camera, scene) {
+    var mouse = new THREE.Vector2();
+    mouse.x =  ( cX / window.innerWidth ) * 2 - 1;
+    mouse.y = -( cY / window.innerHeight ) * 2 + 1;
+
+    // 取得したX、Y座標でrayの位置を更新
+    var raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(mouse, camera);
+
+    // オブジェクトの取得
+    return raycaster.intersectObjects(scene.children);
+  }
+}
 
 // Globals
 var WorldManagerIns = new WorldManager();
-// var DrawManagerIns = new DrawManager();
+var MouseManagerIns = new MouseManager();
 
 // Animation function.
 var lastTime;
@@ -186,10 +292,11 @@ function PhysicsAnimate(time){
   lastTime = time;
 
   // マウスドラッグ時にマウス位置にボールを追従させる処理.
-  if (holdBall) {
-    holdBall.PhyBall.position[0] = mousePosition.x;
-    holdBall.PhyBall.position[1] = mousePosition.y;
-  }
+  MouseManagerIns.MouseWhileClick();
+  // if (MouseManagerIns.holdBall) {
+  //   MouseManagerIns.holdBall.PhyBall.position[0] = MouseManagerIns.mousePosition.x;
+  //   MouseManagerIns.holdBall.PhyBall.position[1] = MouseManagerIns.mousePosition.y;
+  // }
   // ボールのスピードを抑制する.
   WorldManagerIns.BallSpeedControl();
 }
@@ -206,103 +313,20 @@ function DrawAnimate(){
   drawManagerIns.renderer.render(drawManagerIns.scene, drawManagerIns.camera);
 }
 
-// event
-var holdBall;   // ドラッグしているボールを格納する.
-var selectBall = [,]; // ダブルクリックしたボールの情報を格納する.
-var mousePosition = new THREE.Vector2();
-function MouseDown(event){
+// mouse event
+window.addEventListener('mousedown', function(event) {
+  MouseManagerIns.MouseDown(event.clientX, event.clientY, WorldManagerIns);
+});
+window.addEventListener('mousemove', function(event) {
+  MouseManagerIns.MouseMove(event.clientX, event.clientY, WorldManagerIns);
+});
+window.addEventListener('mouseup', function(event) {
+  MouseManagerIns.MouseUp();
+});
+window.addEventListener('dblclick', function(event) {
+  MouseManagerIns.MouseDblClick(event.clientX, event.clientY, WorldManagerIns);
+});
 
-  // オブジェクトの取得
-  var intersects = GetIntersectObjects(event.clientX,event.clientY);
-
-  // ボールをクリックしている時.
-  if (intersects[0]) {
-    // マウス位置をワールド座標に変換して保持する.
-    mousePosition = CameraTransformToWorld(event.clientX, event.clientY);
-
-    // どのボールをクリックしたか判定する.
-    WorldManagerIns.BallList.forEach(function(Ball) {
-      if(Ball.BallId == intersects[0].object.BallId) {
-        holdBall = Ball;
-      }
-    });
-  }
-}
-function MouseMove(event) {
-  // マウスクリック時のX,y座標
-  mousePosition = CameraTransformToWorld(event.clientX, event.clientY);
-
-  if (holdBall) {
-    holdBall.PhyBall.position[0] = mousePosition.x;
-    holdBall.PhyBall.position[1] = mousePosition.y;
-  }
-
-}
-function MouseUp(event) {
-  holdBall = null;
-}
-function MouseDblClick(event){
-  // オブジェクトの取得
-  var intersects = GetIntersectObjects(event.clientX,event.clientY);
-
-  // ボールをダブルクリックしていれば.
-  if (intersects[0]) {
-    var _selectBall;
-    // 物理オブジェクトと描画オブジェクトをBallIdで照合.
-    WorldManagerIns.PhysicsManagerIns.BallList.forEach(function(ball) {
-      if(ball.BallId = intersects[0].object.BallId) {
-        _selectBall = ball;
-        // _selectBall[0] = phyBall;
-        // _selectBall[1] = intersects[0].object;
-      }
-    });
-
-    // 物理オブジェクトと描画オブジェクトを2倍に拡大.
-    // console.log(selectBall[0].shapes[0].radius);
-    // console.log(selectBall[1].scale);
-    _selectBall.PhyBall.shapes[0].radius *= 2;
-    _selectBall.DrawBall.scale.set(2,2,0);
-
-    // 選択していたボールは縮小する.
-    if (selectBall.length > 1) {
-      selectBall.PhyBall.shapes[0].radius *= 0.5;
-      selectBall.DrawBall.scale.set(0.5,0.5,0);
-    }
-
-    selectBall = _selectBall;
-  }
-}
-function CameraTransformToWorld(eX, eY) {
-  var mouse = new THREE.Vector2();
-  mouse.x = (eX / window.innerWidth) * 2 - 1;
-  mouse.y = - (eY / window.innerHeight) * 2 + 1;
-
-  var vector = new THREE.Vector3(mouse.x, mouse.y, 0.5);
-  vector.unproject( WorldManagerIns.DrawManagerIns.camera );
-  var dir = vector.sub( WorldManagerIns.DrawManagerIns.camera.position ).normalize();
-  var distance = - WorldManagerIns.DrawManagerIns.camera.position.z / dir.z;
-  var pos = WorldManagerIns.DrawManagerIns.camera.position.clone().add( dir.multiplyScalar( distance ) );
-
-  return pos;
-}
-// マウス位置と交わるオブジェクトを取得する.
-function GetIntersectObjects(eX, eY) {
-  var mouse = new THREE.Vector2();
-  mouse.x =  ( event.clientX / window.innerWidth ) * 2 - 1;
-  mouse.y = -( event.clientY / window.innerHeight ) * 2 + 1;
-
-  // 取得したX、Y座標でrayの位置を更新
-  var raycaster = new THREE.Raycaster();
-  raycaster.setFromCamera( mouse, WorldManagerIns.DrawManagerIns.camera );
-
-  // オブジェクトの取得
-  return raycaster.intersectObjects( WorldManagerIns.DrawManagerIns.scene.children );
-}
-// Add mouse event listeners
-window.addEventListener('mousedown', MouseDown);
-window.addEventListener('mousemove', MouseMove);
-window.addEventListener('mouseup', MouseUp);
-window.addEventListener('dblclick', MouseDblClick);
 
 // Initialize and start rendering the game!
 // Initializes canvas, physics and input events
@@ -310,7 +334,6 @@ document.addEventListener("DOMContentLoaded", Main);
 function Main() {
   // オブジェクトを作り出す.
   WorldManagerIns.CreateWorld();
-
   // 物理アニメーションを行う.
   requestAnimationFrame(PhysicsAnimate);
   // 描画アニメーションを行う.
