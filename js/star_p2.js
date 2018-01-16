@@ -8,7 +8,6 @@ class WorldManager {
     this.DrawManagerIns = new DrawManager();
     this.GameWidth = 8*(window.innerWidth * window.devicePixelRatio/100);
     this.GameHeight = 8*(window.innerHeight * window.devicePixelRatio/100);
-    console.log(window.innerWidth * window.devicePixelRatio/100);
   }
   // .
   CreateWorld(){
@@ -28,11 +27,8 @@ class WorldManager {
       // 描画オブジェクトを作り出す.
       var drawBall = this.DrawManagerIns.Draw();
 
-      // ボールオブジェクトを生成する.
-      var ball = new Ball(i, phyBall, drawBall);
-
-      // リストに追加.
-      this.BallList[i] = ball;
+      // ボールオブジェクトをリストに追加.
+      this.BallList[i] = new Ball(i, phyBall, drawBall);
     }
 
     // Plane.
@@ -51,7 +47,6 @@ class WorldManager {
     this.World.addBody(planeBody);
     return planeBody;
   }
-  // レンダリングする.
 
   // ボールの速度を抑制する.
   BallSpeedControl() {
@@ -76,6 +71,18 @@ class WorldManager {
   static GetRandomArbitary(min, max) {
     return Math.random() * (max - min) + min;
   }
+  // .
+  OutputBallInfo() {
+    // this.BallList.forEach(function(ball) {
+    console.log("-----------------------------");
+    for (var i = 0;i<this.BallList.length;i++) {
+      console.log("");
+      console.log("ball id   : " + this.BallList[i].BallId);
+      console.log("ball phy  : " + this.BallList[i].PhyBall.BallId);
+      console.log("ball draw : " + this.BallList[i].DrawBall.BallId);
+    }
+    console.log("-----------------------------");
+  }
 }
 // Ballの基本設定が入るクラス.
 class BallSetting {
@@ -90,10 +97,10 @@ class BallSetting {
 // .
 class Ball {
   constructor(ballId, phyBall, drawBall) {
-    this.BallId = ballId;
     this.PhyBall = phyBall;
     this.DrawBall = drawBall;
 
+    this.BallId = ballId;
     this.PhyBall.BallId = ballId;
     this.DrawBall.BallId = ballId;
   }
@@ -204,20 +211,19 @@ var holdBall;   // ドラッグしているボールを格納する.
 var selectBall = [,]; // ダブルクリックしたボールの情報を格納する.
 var mousePosition = new THREE.Vector2();
 function MouseDown(event){
-  // マウス位置をワールド座標に変換して保持する.
-  mousePosition = CameraTransformToWorld(event.clientX, event.clientY);
 
   // オブジェクトの取得
   var intersects = GetIntersectObjects(event.clientX,event.clientY);
 
   // ボールをクリックしている時.
   if (intersects[0]) {
+    // マウス位置をワールド座標に変換して保持する.
+    mousePosition = CameraTransformToWorld(event.clientX, event.clientY);
+
+    // どのボールをクリックしたか判定する.
     WorldManagerIns.BallList.forEach(function(Ball) {
-      if(Ball.BallId = intersects[0].object.BallId) {
-        console.log(Ball.BallId);
+      if(Ball.BallId == intersects[0].object.BallId) {
         holdBall = Ball;
-        // holdBall[0] = Ball.PhyBall;
-        // holdBall[1] = intersects[0].object;
       }
     });
   }
@@ -227,8 +233,6 @@ function MouseMove(event) {
   mousePosition = CameraTransformToWorld(event.clientX, event.clientY);
 
   if (holdBall) {
-    console.log(holdBall.PhyBall.position);
-    console.log(holdBall.DrawBall.position);
     holdBall.PhyBall.position[0] = mousePosition.x;
     holdBall.PhyBall.position[1] = mousePosition.y;
   }
@@ -304,10 +308,12 @@ window.addEventListener('dblclick', MouseDblClick);
 // Initializes canvas, physics and input events
 document.addEventListener("DOMContentLoaded", Main);
 function Main() {
-  // 物理オブジェクトを作り出す.
+  // オブジェクトを作り出す.
   WorldManagerIns.CreateWorld();
+
   // 物理アニメーションを行う.
   requestAnimationFrame(PhysicsAnimate);
   // 描画アニメーションを行う.
   DrawAnimate();
+
 }
