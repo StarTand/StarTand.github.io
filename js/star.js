@@ -32,8 +32,8 @@ class WorldManager {
     }
 
     // Plane.
-    this.CreatePlane([0, -this.GameHeight/2], 0);
     this.CreatePlane([0, this.GameHeight/2 + this.PhysicsManagerIns.BallRadius*2], Math.PI); // Top
+    this.CreatePlane([0, -this.GameHeight/2], 0);
     this.CreatePlane([-this.GameWidth/2, 0], -Math.PI / 2); // Left
     this.CreatePlane([this.GameWidth/2, 0], Math.PI / 2); // Right
   }
@@ -140,10 +140,13 @@ class PhysicsManager extends BallSetting {
 // three.jsを利用して描画するクラス.
 class DrawManager extends BallSetting {
   constructor() {
+    // set inner variable.
     super();
     this.renderer;
     this.scene;
     this.camera;
+    this.composer;
+
     // init.
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
@@ -151,6 +154,18 @@ class DrawManager extends BallSetting {
     this.renderer.setSize( window.innerWidth, window.innerHeight );
     document.body.appendChild( this.renderer.domElement );
     this.camera.position.z = 30;
+
+    // set postprocessing.
+    this.composer = new THREE.EffectComposer(this.renderer);
+    // let renderPass = new THREE.RenderPass(this.scene, this.camera);
+    // let effectBloom = new THREE.Bloompass(1.0, 25, 2.0, 512);
+    this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
+    this.composer.addPass(new THREE.BloomPass(4.0, 25, 2.0, 512));
+
+    var toScreen = new THREE.ShaderPass(THREE.CopyShader);
+    toScreen.renderToScreen = true;
+    this.composer.addPass(toScreen);
+
   }
   Draw() {
 
@@ -188,14 +203,21 @@ class MouseManager {
         if(ballList[i].BallId == intersects[0].object.BallId) {
           console.log(ballList[i]);
           this.holdBall = ballList[i];
+          console.log(this.holdBall.PhyBall);
         }
       }
     }
   }
   MouseWhileClick() {
     if (this.holdBall) {
-      this.holdBall.PhyBall.position[0] = this.mousePosition.x;
-      this.holdBall.PhyBall.position[1] = this.mousePosition.y;
+      console.log(this.holdBall.PhyBall);
+      // position.
+      // this.holdBall.PhyBall.position[0] = this.mousePosition.x;
+      // this.holdBall.PhyBall.position[1] = this.mousePosition.y;
+      // velocity.
+      this.holdBall.PhyBall.velocity[0] = this.mousePosition.x * 3;
+      this.holdBall.PhyBall.velocity[1] = this.mousePosition.y * 3;
+      // this.holdBall.PhyBall.AddForce = [this.mousePosition.x * 0.1, this.mousePosition.y * 0.1];
     }
   }
   MouseMove(cX, cY, worldManagerIns) {
@@ -203,8 +225,8 @@ class MouseManager {
     this.mousePosition = this.CameraTransformToWorld(cX, cY, worldManagerIns.DrawManagerIns.camera);
 
     if (this.holdBall) {
-      this.holdBall.PhyBall.position[0] = this.mousePosition.x;
-      this.holdBall.PhyBall.position[1] = this.mousePosition.y;
+      // this.holdBall.PhyBall.position[0] = this.mousePosition.x;
+      // this.holdBall.PhyBall.position[1] = this.mousePosition.y;
     }
   }
   MouseUp() {
@@ -215,12 +237,13 @@ class MouseManager {
     var intersects = this.GetIntersectObjects(cX, cY
       , worldManagerIns.DrawManagerIns.camera, worldManagerIns.DrawManagerIns.scene);
 
+
     // ボールをダブルクリックしていれば.
     if (intersects[0]) {
       var _selectBall;
-      // 物理オブジェクトと描画オブジェクトをBallIdで照合.
       var ballList = worldManagerIns.BallList;
-      for (i=0;i<ballList.length;i++) {
+      // 物理オブジェクトと描画オブジェクトをBallIdで照合.
+      for (i = 0; i < ballList.length; i++) {
         if(ballList[i].BallId == intersects[0].object.BallId) {
           _selectBall = ballList[i];
         }
@@ -277,6 +300,7 @@ var MouseManagerIns = new MouseManager();
 var lastTime;
 var maxSubSteps = 5; // Max physics ticks per render frame
 var fixedDeltaTime = 1 / 30; // Physics "tick" delta time
+// 剛体計算.
 function PhysicsAnimate(time){
   requestAnimationFrame(PhysicsAnimate);
 
@@ -297,6 +321,7 @@ function PhysicsAnimate(time){
   // ボールのスピードを抑制する.
   WorldManagerIns.BallSpeedControl();
 }
+// 描画計算..
 function DrawAnimate(){
   requestAnimationFrame(DrawAnimate);
 
@@ -307,7 +332,8 @@ function DrawAnimate(){
   }
   // レンダリングする.
   var drawManagerIns = WorldManagerIns.DrawManagerIns;
-  drawManagerIns.renderer.render(drawManagerIns.scene, drawManagerIns.camera);
+  // drawManagerIns.renderer.render(drawManagerIns.scene, drawManagerIns.camera);
+  drawManagerIns.composer.render();
 }
 
 // mouse event
