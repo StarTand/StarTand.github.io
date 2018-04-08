@@ -188,13 +188,13 @@ class DrawManager extends BallSetting {
     return mshBall;
   }
   Draw_Github() {
-    // var texLoader = new THREE.TextureLoader();
-    // texLoader.crossOrigin = '*';
-    // var texture = texLoader.load('https://assets-cdn.github.com/images/modules/logos_page/GitHub-Logo.png');
-    // .
-    var loader = new THREE.FontLoader();
-    var font = loader.load('fonts/helvetiker_regular.typeface.json');
-    var text = new THREE.TextGeometry("Github", {font:font});
+    // github log.
+    var texLoader = new THREE.TextureLoader();
+    texLoader.crossOrigin = '*';
+    var texture = texLoader.load('https://assets-cdn.github.com/images/modules/logos_page/GitHub-Logo.png');
+    // var loader = new THREE.FontLoader();
+    // var font = loader.load('fonts/helvetiker_regular.typeface.json');
+    // var text = new THREE.TextGeometry("Github", {font:font});
     // ボールを作成.
     var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
     var material = new THREE.MeshPhongMaterial( { map:texture } );
