@@ -191,7 +191,8 @@ class DrawManager extends BallSetting {
     // github log.
     var texLoader = new THREE.TextureLoader();
     texLoader.crossOrigin = '*';
-    var texture = texLoader.load('https://assets-cdn.github.com/images/modules/logos_page/GitHub-Logo.png');
+    var texture = texLoader.load('./image/github.png');
+    // var texture = texLoader.load('https://assets-cdn.github.com/images/modules/logos_page/GitHub-Logo.png');
     // var loader = new THREE.FontLoader();
     // var font = loader.load('fonts/helvetiker_regular.typeface.json');
     // var text = new THREE.TextGeometry("Github", {font:font});
