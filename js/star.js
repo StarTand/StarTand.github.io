@@ -19,6 +19,17 @@ class WorldManager {
     this.World.defaultContactMaterial.restitution = 1; // bounciness.
 
     // ボールを生成する.
+    // ...github.
+    // 物理オブジェクトを作成する.
+    var phyBall = this.PhysicsManagerIns.CreateBall(this.World);
+    this.PhysicsManagerIns.AddForce(phyBall);
+    // 描画オブジェクトを作り出す.
+    var drawBall = this.DrawManagerIns.Draw_Github();
+
+    // ボールオブジェクトをリストに追加.
+    this.BallList[i] = new Ball(i, phyBall, drawBall);
+    // ...twitter.
+    // ....
     for (var i = 0; i<5;i++) {
 
       // 物理オブジェクトを作成する.
@@ -168,10 +179,25 @@ class DrawManager extends BallSetting {
 
   }
   Draw() {
-
     // ボールを作成.
     var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
     var material = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
+    var mshBall = new THREE.Mesh( geometry, material );
+    // add.
+    this.scene.add( mshBall );
+    return mshBall;
+  }
+  Draw_Github() {
+    // var texLoader = new THREE.TextureLoader();
+    // texLoader.crossOrigin = '*';
+    // var texture = texLoader.load('https://assets-cdn.github.com/images/modules/logos_page/GitHub-Logo.png');
+    // .
+    var loader = new THREE.FontLoader();
+    var font = loader.load('fonts/helvetiker_regular.typeface.json');
+    var text = new THREE.TextGeometry("Github", {font:font});
+    // ボールを作成.
+    var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
+    var material = new THREE.MeshPhongMaterial( { map:texture } );
     var mshBall = new THREE.Mesh( geometry, material );
     // add.
     this.scene.add( mshBall );
@@ -181,6 +207,7 @@ class DrawManager extends BallSetting {
 // マウスイベントを管理するクラス.
 class MouseManager {
   constructor() {
+    this.holdFlag;   // ボールをドラッグしたかどうか判定する.
     this.holdBall;   // ドラッグしているボールを格納する.
     this.selectBall; // ダブルクリックしたボールの情報を格納する.
     this.mousePosition = new THREE.Vector2();
@@ -212,15 +239,15 @@ class MouseManager {
     if (this.holdBall) {
       console.log(this.holdBall.PhyBall);
       // position.
-      // this.holdBall.PhyBall.position[0] = this.mousePosition.x;
-      // this.holdBall.PhyBall.position[1] = this.mousePosition.y;
+      this.holdBall.PhyBall.position[0] = this.mousePosition.x;
+      this.holdBall.PhyBall.position[1] = this.mousePosition.y;
       // velocity.
-      this.holdBall.PhyBall.velocity[0] = this.mousePosition.x * 3;
-      this.holdBall.PhyBall.velocity[1] = this.mousePosition.y * 3;
-      // this.holdBall.PhyBall.AddForce = [this.mousePosition.x * 0.1, this.mousePosition.y * 0.1];
+      // this.holdBall.PhyBall.velocity[0] = this.mousePosition.x * 3;
+      // this.holdBall.PhyBall.velocity[1] = this.mousePosition.y * 3;
     }
   }
   MouseMove(cX, cY, worldManagerIns) {
+    this.holdFlag = true;
     // マウスクリック時のX,y座標
     this.mousePosition = this.CameraTransformToWorld(cX, cY, worldManagerIns.DrawManagerIns.camera);
 
