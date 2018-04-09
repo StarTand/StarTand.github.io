@@ -30,7 +30,7 @@ class WorldManager {
     this.BallList[i] = new Ball(i, phyBall, drawBall);
     // ...twitter.
     // ....
-    for (var i = 0; i<5;i++) {
+    for (var i = 0; i < 5; i++) {
 
       // 物理オブジェクトを作成する.
       var phyBall = this.PhysicsManagerIns.CreateBall(this.World);
@@ -158,25 +158,28 @@ class DrawManager extends BallSetting {
     this.camera;
     this.composer;
 
+    this.SetEnv();
+  }
+  SetEnv() {
     // init.
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+    this.camera.position.z = 30;
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setSize( window.innerWidth, window.innerHeight );
     document.body.appendChild( this.renderer.domElement );
-    this.camera.position.z = 30;
+    var light = new THREE.DirectionalLight(0xffffff);
+    light.position.set(1,1,1).normalize();
+    this.scene.add(light);
 
     // set postprocessing.
     this.composer = new THREE.EffectComposer(this.renderer);
-    // let renderPass = new THREE.RenderPass(this.scene, this.camera);
-    // let effectBloom = new THREE.Bloompass(1.0, 25, 2.0, 512);
     this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
     this.composer.addPass(new THREE.BloomPass(4.0, 25, 2.0, 512));
 
     var toScreen = new THREE.ShaderPass(THREE.CopyShader);
     toScreen.renderToScreen = true;
     this.composer.addPass(toScreen);
-
   }
   Draw() {
     // ボールを作成.
@@ -389,5 +392,18 @@ function Main() {
   requestAnimationFrame(PhysicsAnimate);
   // 描画アニメーションを行う.
   DrawAnimate();
+
+  // test.
+  // -- load image.
+  var texLoader = new THREE.TextureLoader();
+  texLoader.crossOrigin = '*';
+  texLoader.minFilter = THREE.LinearFilter;
+  var texture = texLoader.load('./image/github.png');
+  // -- ボールを作成.
+  var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
+  var material = new THREE.MeshPhongMaterial( { map:texture } );
+  var mshBall = new THREE.Mesh( geometry, material );
+  // -- add.
+  WorldManagerIns.DrawManagerIns.scene.add( mshBall );
 
 }
