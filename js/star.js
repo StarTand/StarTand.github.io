@@ -6,40 +6,39 @@ class WorldManager {
     this.BallList = [];
     this.PhysicsManagerIns = new PhysicsManager();
     this.DrawManagerIns = new DrawManager();
-    this.GameWidth = 8*(window.innerWidth * window.devicePixelRatio/100);
-    this.GameHeight = 8*(window.innerHeight * window.devicePixelRatio/100);
+    this.GameWidth = 6*(window.innerWidth * window.devicePixelRatio/100);
+    this.GameHeight = 6*(window.innerHeight * window.devicePixelRatio/100);
   }
   // .
   CreateWorld(){
+    var ballCount = 0;
     // set world.
-    this.World = new p2.World({
-      gravity : [0,0]
-    });
+    this.World = new p2.World({gravity : [0,0]});
     this.World.defaultContactMaterial.friction = 0;
     this.World.defaultContactMaterial.restitution = 1; // bounciness.
 
     // ボールを生成する.
-    // ...github.
-    // 物理オブジェクトを作成する.
+    // --- info.
+    var textInfo = "説明が入ります.";
     var phyBall = this.PhysicsManagerIns.CreateBall(this.World);
-    this.PhysicsManagerIns.AddForce(phyBall);
-    // 描画オブジェクトを作り出す.
-    var drawBall = this.DrawManagerIns.Draw_Github();
-
-    // ボールオブジェクトをリストに追加.
-    this.BallList[i] = new Ball(i, phyBall, drawBall);
-    // ...twitter.
-    // ....
-    for (var i = 0; i < 5; i++) {
-
-      // 物理オブジェクトを作成する.
-      var phyBall = this.PhysicsManagerIns.CreateBall(this.World);
-      this.PhysicsManagerIns.AddForce(phyBall);
-      // 描画オブジェクトを作り出す.
-      var drawBall = this.DrawManagerIns.Draw();
-
+    var drawBall = this.DrawManagerIns.Draw_Text('./image/info.png', textInfo);
+    this.BallList[ballCount] = new Ball(ballCount, phyBall, drawBall, ['info', 'text'], '');
+    ballCount++;
+    // --- github.
+    var phyBall = this.PhysicsManagerIns.CreateBall(this.World);
+    var drawBall = this.DrawManagerIns.Draw_Service('./image/github2.png');
+    this.BallList[ballCount] = new Ball(ballCount, phyBall, drawBall, ['service'], 'https://github.com/StarTand');
+    ballCount++;
+    // --- create other balls.
+    for (; ballCount<5;ballCount++) {
+      phyBall = this.PhysicsManagerIns.CreateBall(this.World);
+      drawBall = this.DrawManagerIns.Draw();
       // ボールオブジェクトをリストに追加.
-      this.BallList[i] = new Ball(i, phyBall, drawBall);
+      this.BallList[ballCount] = new Ball(ballCount, phyBall, drawBall, '');
+    }
+    // add force to ball.
+    for (var i = 0; i<this.BallList.lenght;i++) {
+      this.PhysicsManagerIns.AddForce(this.BallList[i].PhyBall);
     }
 
     // Plane.
@@ -107,7 +106,7 @@ class BallSetting {
 }
 // .
 class Ball {
-  constructor(ballId, phyBall, drawBall) {
+  constructor(ballId, phyBall, drawBall, tagList, url) {
     this.PhyBall = phyBall;
     this.DrawBall = drawBall;
 
@@ -115,6 +114,9 @@ class Ball {
     this.PhyBall.BallId = ballId;
     this.DrawBall.BallId = ballId;
     this.ZoomFlag = false;
+    this.TagList = ['Ball'].concat(tagList);
+    this.Url = url;
+    this.UrlTransFlag = false; // url遷移した際に真にする.
   }
 }
 // 物理演算用のクラス.
@@ -158,28 +160,23 @@ class DrawManager extends BallSetting {
     this.camera;
     this.composer;
 
-    this.SetEnv();
-  }
-  SetEnv() {
     // init.
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
-    this.camera.position.z = 30;
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setSize( window.innerWidth, window.innerHeight );
     document.body.appendChild( this.renderer.domElement );
-    var light = new THREE.DirectionalLight(0xffffff);
-    light.position.set(1,1,1).normalize();
-    this.scene.add(light);
+    this.camera.position.z = 30;
 
     // set postprocessing.
     this.composer = new THREE.EffectComposer(this.renderer);
     this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
-    this.composer.addPass(new THREE.BloomPass(4.0, 25, 2.0, 512));
+    this.composer.addPass(new THREE.BloomPass(1.0, 25, 0.1, 1024));//512));
 
     var toScreen = new THREE.ShaderPass(THREE.CopyShader);
     toScreen.renderToScreen = true;
     this.composer.addPass(toScreen);
+
   }
   Draw() {
     // ボールを作成.
@@ -190,19 +187,32 @@ class DrawManager extends BallSetting {
     this.scene.add( mshBall );
     return mshBall;
   }
-  Draw_Github() {
+  Draw_Service(imagePath) {
     // github log.
     var texLoader = new THREE.TextureLoader();
     texLoader.crossOrigin = '*';
-    var texture = texLoader.load('./image/github.png');
-    // var texture = texLoader.load('https://assets-cdn.github.com/images/modules/logos_page/GitHub-Logo.png');
-    // var loader = new THREE.FontLoader();
-    // var font = loader.load('fonts/helvetiker_regular.typeface.json');
-    // var text = new THREE.TextGeometry("Github", {font:font});
-    // ボールを作成.
+    var texture = texLoader.load(imagePath);
+
+    // create ball.
     var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
-    var material = new THREE.MeshPhongMaterial( { map:texture } );
+    var material = new THREE.MeshBasicMaterial( { map: texture } );
     var mshBall = new THREE.Mesh( geometry, material );
+
+    // add.
+    this.scene.add( mshBall );
+    return mshBall;
+  }
+  Draw_Text(befImagePath, aftImagePath, text) {
+    // github log.
+    var texLoader = new THREE.TextureLoader();
+    texLoader.crossOrigin = '*';
+    var befTexture = texLoader.load(befImagePath);
+
+    // create ball.
+    var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
+    var material = new THREE.MeshBasicMaterial( { map: befTexture } );
+    var mshBall = new THREE.Mesh( geometry, material );
+
     // add.
     this.scene.add( mshBall );
     return mshBall;
@@ -230,18 +240,22 @@ class MouseManager {
 
       // どのボールをクリックしたか判定する.
       var ballList = worldManagerIns.BallList;
-      for (i=0;i<ballList.length;i++) {
+      for (var i=0; i<ballList.length; i++) {
         if(ballList[i].BallId == intersects[0].object.BallId) {
           console.log(ballList[i]);
           this.holdBall = ballList[i];
-          console.log(this.holdBall.PhyBall);
+          // url遷移先があり、拡大中かつ、url遷移前のときにurl遷移する.
+          if (ballList[i].Url != '' && ballList[i].ZoomFlag && !ballList[i].UrlTransFlag) {
+            // document.location.href = ballList[i].Url;
+            window.open(ballList[i].Url, '');
+            ballList[i].UrlTransFlag = true;
+          }
         }
       }
     }
   }
   MouseWhileClick() {
     if (this.holdBall) {
-      console.log(this.holdBall.PhyBall);
       // position.
       this.holdBall.PhyBall.position[0] = this.mousePosition.x;
       this.holdBall.PhyBall.position[1] = this.mousePosition.y;
@@ -281,15 +295,25 @@ class MouseManager {
       }
 
       // 物理オブジェクトと描画オブジェクトを2倍に拡大.
+      // TODO:_selectBall.ZoomUp()で実装したい.
       _selectBall.PhyBall.shapes[0].radius *= 2;
       _selectBall.DrawBall.scale.set(2,2,1);
       _selectBall.ZoomFlag = true;
+      console.log(_selectBall.DrawBall);
+      var textFlag = _selectBall.tagList.some(function(value) {
+        return value == "text"}
+      );
+      if (textFlag) {
+        _selectBall.DrawBall.material = "";
+      }
 
       // 選択していたボールは縮小する.
       if (this.selectBall) {
+        // TODO:this.selectBall.ZoomOut()で実装したい.
         this.selectBall.PhyBall.shapes[0].radius *= 0.5;
         this.selectBall.DrawBall.scale.set(1,1,1);
         this.selectBall.ZoomFlag = false;
+        this.selectBall.UrlTransFlag = false;
       }
       // .
       this.selectBall = _selectBall;
@@ -351,16 +375,16 @@ function PhysicsAnimate(time){
 
   // ボールのスピードを抑制する.
   WorldManagerIns.BallSpeedControl();
-}
-// 描画計算..
-function DrawAnimate(){
-  requestAnimationFrame(DrawAnimate);
 
   // ここで物理計算オブジェクトの座標と描画用オブジェクトの座標を一致させる.
   for (i=0;i<WorldManagerIns.BallList.length;i++) {
     WorldManagerIns.BallList[i].DrawBall.position.x = WorldManagerIns.BallList[i].PhyBall.position[0];
     WorldManagerIns.BallList[i].DrawBall.position.y = WorldManagerIns.BallList[i].PhyBall.position[1];
   }
+}
+// 描画計算..
+function DrawAnimate(){
+  requestAnimationFrame(DrawAnimate);
   // レンダリングする.
   var drawManagerIns = WorldManagerIns.DrawManagerIns;
   // drawManagerIns.renderer.render(drawManagerIns.scene, drawManagerIns.camera);
@@ -392,18 +416,5 @@ function Main() {
   requestAnimationFrame(PhysicsAnimate);
   // 描画アニメーションを行う.
   DrawAnimate();
-
-  // test.
-  // -- load image.
-  var texLoader = new THREE.TextureLoader();
-  texLoader.crossOrigin = '*';
-  texLoader.minFilter = THREE.LinearFilter;
-  var texture = texLoader.load('./image/github.png');
-  // -- ボールを作成.
-  var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
-  var material = new THREE.MeshPhongMaterial( { map:texture } );
-  var mshBall = new THREE.Mesh( geometry, material );
-  // -- add.
-  WorldManagerIns.DrawManagerIns.scene.add( mshBall );
 
 }
