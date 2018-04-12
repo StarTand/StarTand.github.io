@@ -118,6 +118,12 @@ class Ball {
     this.Url = url;
     this.UrlTransFlag = false; // url遷移した際に真にする.
   }
+  CheckTag(tagName) {
+    var exist = this.TagList.some(function(value) {
+      return value == tagName}
+    );
+    return exist;
+  }
 }
 // 物理演算用のクラス.
 class PhysicsManager extends BallSetting {
@@ -244,8 +250,8 @@ class MouseManager {
         if(ballList[i].BallId == intersects[0].object.BallId) {
           console.log(ballList[i]);
           this.holdBall = ballList[i];
-          // url遷移先があり、拡大中かつ、url遷移前のときにurl遷移する.
-          if (ballList[i].Url != '' && ballList[i].ZoomFlag && !ballList[i].UrlTransFlag) {
+          // tagがserviceであり、拡大中かつ、url遷移前のときにurl遷移する.
+          if (ballList[i].CheckTag("service") && ballList[i].ZoomFlag && !ballList[i].UrlTransFlag) {
             // document.location.href = ballList[i].Url;
             window.open(ballList[i].Url, '');
             ballList[i].UrlTransFlag = true;
@@ -300,11 +306,9 @@ class MouseManager {
       _selectBall.DrawBall.scale.set(2,2,1);
       _selectBall.ZoomFlag = true;
       console.log(_selectBall.DrawBall);
-      var textFlag = _selectBall.tagList.some(function(value) {
-        return value == "text"}
-      );
-      if (textFlag) {
-        _selectBall.DrawBall.material = "";
+      if (_selectBall.CheckTag("text")) {
+        // _selectBall.DrawBall.material = "";.
+        console.log("text ball doubleClick");
       }
 
       // 選択していたボールは縮小する.
