@@ -11,41 +11,52 @@ class WorldManager {
   }
   // .
   CreateWorld(){
-    var ballCount = 0;
     // set world.
     this.World = new p2.World({gravity : [0,0]});
     this.World.defaultContactMaterial.friction = 0;
     this.World.defaultContactMaterial.restitution = 1; // bounciness.
 
     // ボールを生成する.
-    // --- info.
-    var textInfo = "説明が入ります.";
-    var phyBall = this.PhysicsManagerIns.CreateBall(this.World);
-    var drawBall = this.DrawManagerIns.Draw_Text('./image/info.png', textInfo);
-    this.BallList[ballCount] = new Ball(ballCount, phyBall, drawBall, ['info', 'text'], '');
-    ballCount++;
-    // --- github.
-    var phyBall = this.PhysicsManagerIns.CreateBall(this.World);
-    var drawBall = this.DrawManagerIns.Draw_Service('./image/github2.png');
-    this.BallList[ballCount] = new Ball(ballCount, phyBall, drawBall, ['service'], 'https://github.com/StarTand');
-    ballCount++;
-    // --- create other balls.
-    for (; ballCount<5;ballCount++) {
-      phyBall = this.PhysicsManagerIns.CreateBall(this.World);
-      drawBall = this.DrawManagerIns.Draw();
-      // ボールオブジェクトをリストに追加.
-      this.BallList[ballCount] = new Ball(ballCount, phyBall, drawBall, '');
-    }
-    // add force to ball.
-    for (var i = 0; i<this.BallList.lenght;i++) {
-      this.PhysicsManagerIns.AddForce(this.BallList[i].PhyBall);
-    }
+    this.CreateBalls();
 
     // Plane.
     this.CreatePlane([0, this.GameHeight/2 + this.PhysicsManagerIns.BallRadius*2], Math.PI); // Top
     this.CreatePlane([0, -this.GameHeight/2], 0);
     this.CreatePlane([-this.GameWidth/2, 0], -Math.PI / 2); // Left
     this.CreatePlane([this.GameWidth/2, 0], Math.PI / 2); // Right
+  }
+  // ボールを生成する.
+  CreateBalls() {
+    var ballCount = 0;
+    var ballMax = 5;
+    var phyBall;
+    var drawBall;
+    var textInfo;
+    var baseMaterial = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
+
+    // --- info.
+    textInfo = "説明が入ります.";
+    phyBall = this.PhysicsManagerIns.CreateBall(this.World);
+    drawBall = this.DrawManagerIns.Draw_Text('./image/info.png', textInfo);
+    this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['info', 'text'], '', textInfo, baseMaterial));
+    // --- github.
+    phyBall = this.PhysicsManagerIns.CreateBall(this.World);
+    drawBall = this.DrawManagerIns.Draw_Service('./image/github2.png');
+    this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['service'],
+      'https://github.com/StarTand', '', baseMaterial
+    ));
+    // --- create other balls.
+    while (ballCount < ballMax) {
+      phyBall = this.PhysicsManagerIns.CreateBall(this.World);
+      drawBall = this.DrawManagerIns.Draw();
+      this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['normal'],
+        '', '', baseMaterial
+      ));
+    }
+    // add force to ball.
+    for (var i = 0; i<this.BallList.lenght;i++) {
+      this.PhysicsManagerIns.AddForce(this.BallList[i].PhyBall);
+    }
   }
   // Creates a physics plane at a given position
   CreatePlane(position, angle){
@@ -72,6 +83,15 @@ class WorldManager {
         this.BallList[i].PhyBall.velocity[1] -= decelerationRate;
       }
     }
+  }
+  // ボールIDを照合して真偽を返す.
+  CheckBallId(ball) {
+    for (i = 0; i < this.BallList.length; i++) {
+      if(this.BallList[i].BallId == ball.BallId) {
+        return this.BallList[i];
+      }
+    }
+    return null;
   }
   // 数値をワールド座標に変換する.
   static ScaleToWorld(value) {
@@ -106,16 +126,17 @@ class BallSetting {
 }
 // .
 class Ball {
-  constructor(ballId, phyBall, drawBall, tagList, url) {
+  constructor(ballId, phyBall, drawBall, tagList, url, text, afterMaterial) {
+    this.BallId = ballId;
     this.PhyBall = phyBall;
     this.DrawBall = drawBall;
-
-    this.BallId = ballId;
     this.PhyBall.BallId = ballId;
     this.DrawBall.BallId = ballId;
-    this.ZoomFlag = false;
     this.TagList = ['Ball'].concat(tagList);
     this.Url = url;
+    this.BeforeMaterial = this.DrawBall.material;
+    this.AfterMaterial = afterMaterial;
+    this.ZoomFlag = false;
     this.UrlTransFlag = false; // url遷移した際に真にする.
   }
   CheckTag(tagName) {
@@ -123,6 +144,28 @@ class Ball {
       return value == tagName}
     );
     return exist;
+  }
+  ZoomIn() {
+    this.PhyBall.shapes[0].radius *= 2;
+    this.DrawBall.scale.set(2,2,1);
+    this.ZoomFlag = true;
+
+    if (this.CheckTag("text")) {
+      this.DrawBall.material = this.AfterMaterial;
+    }
+  }
+  ZoomOut() {
+    this.PhyBall.shapes[0].radius *= 0.5;
+    this.DrawBall.scale.set(1,1,1);
+    this.ZoomFlag = false;
+    this.UrlTransFlag = false;
+    if (this.CheckTag("text")) {
+      this.DrawBall.material = this.BeforeMaterial;
+    }
+  }
+  UrlTransition() {
+    window.open(this.Url, '');
+    this.UrlTransFlag = true;
   }
 }
 // 物理演算用のクラス.
@@ -245,18 +288,11 @@ class MouseManager {
         , worldManagerIns.DrawManagerIns.camera);
 
       // どのボールをクリックしたか判定する.
-      var ballList = worldManagerIns.BallList;
-      for (var i=0; i<ballList.length; i++) {
-        if(ballList[i].BallId == intersects[0].object.BallId) {
-          console.log(ballList[i]);
-          this.holdBall = ballList[i];
-          // tagがserviceであり、拡大中かつ、url遷移前のときにurl遷移する.
-          if (ballList[i].CheckTag("service") && ballList[i].ZoomFlag && !ballList[i].UrlTransFlag) {
-            // document.location.href = ballList[i].Url;
-            window.open(ballList[i].Url, '');
-            ballList[i].UrlTransFlag = true;
-          }
-        }
+      this.holdBall = worldManagerIns.CheckBallId(intersects[0].object);
+
+      // tagがserviceであり、拡大中かつ、url遷移前のときにurl遷移する.
+      if (this.holdBall.CheckTag("service") && this.holdBall.ZoomFlag && !this.holdBall.UrlTransFlag) {
+        this.holdBall.UrlTransition();
       }
     }
   }
@@ -288,36 +324,17 @@ class MouseManager {
     var intersects = this.GetIntersectObjects(cX, cY
       , worldManagerIns.DrawManagerIns.camera, worldManagerIns.DrawManagerIns.scene);
 
-
     // ボールをダブルクリックしていれば.
     if (intersects[0]) {
-      var _selectBall;
-      var ballList = worldManagerIns.BallList;
-      // 物理オブジェクトと描画オブジェクトをBallIdで照合.
-      for (i = 0; i < ballList.length; i++) {
-        if(ballList[i].BallId == intersects[0].object.BallId) {
-          _selectBall = ballList[i];
-        }
-      }
+      // BallIdを照合.
+      var _selectBall = worldManagerIns.CheckBallId(intersects[0].object);
 
       // 物理オブジェクトと描画オブジェクトを2倍に拡大.
-      // TODO:_selectBall.ZoomUp()で実装したい.
-      _selectBall.PhyBall.shapes[0].radius *= 2;
-      _selectBall.DrawBall.scale.set(2,2,1);
-      _selectBall.ZoomFlag = true;
-      console.log(_selectBall.DrawBall);
-      if (_selectBall.CheckTag("text")) {
-        // _selectBall.DrawBall.material = "";.
-        console.log("text ball doubleClick");
-      }
+      _selectBall.ZoomIn();
 
       // 選択していたボールは縮小する.
       if (this.selectBall) {
-        // TODO:this.selectBall.ZoomOut()で実装したい.
-        this.selectBall.PhyBall.shapes[0].radius *= 0.5;
-        this.selectBall.DrawBall.scale.set(1,1,1);
-        this.selectBall.ZoomFlag = false;
-        this.selectBall.UrlTransFlag = false;
+        this.selectBall.ZoomOut();
       }
       // .
       this.selectBall = _selectBall;
