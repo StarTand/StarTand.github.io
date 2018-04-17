@@ -35,7 +35,9 @@ class WorldManager {
     var baseMaterial = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
 
     // info.
-    var textInfo = "説明が入ります.";
+    var textInfo =
+        "円形のUIを使ったポートフォリオサイトのようなものを目指して製作中のサイトです.<br>"
+      + "描画用にthree.js,物理演算でp2.jsを利用しています.";
     phyBall = this.PhysicsManagerIns.CreateBall(this.World);
     drawBall = this.DrawManagerIns.Draw_Text('./image/info.png', textInfo);
     this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['info', 'text'], '', textInfo, baseMaterial));
@@ -88,7 +90,7 @@ class WorldManager {
   }
   // ボールIDを照合して真偽を返す.
   CheckBallId(ball) {
-    for (i = 0; i < this.BallList.length; i++) {
+    for (let i = 0; i < this.BallList.length; i++) {
       if(this.BallList[i].BallId == ball.BallId) {
         return this.BallList[i];
       }
@@ -139,7 +141,6 @@ class Ball {
     this.BeforeMaterial = this.DrawBall.material;
     this.AfterMaterial = afterMaterial;
     this.ZoomFlag = false;
-    this.Text = text;
     this.UrlTransFlag = false; // url遷移した際に真にする.
   }
   CheckTag(tagName) {
@@ -155,7 +156,7 @@ class Ball {
 
     if (this.CheckTag("text")) {
       this.DrawBall.material = this.AfterMaterial;
-
+      this.DrawBall.TextLabel.element.style.opacity = 1;
     }
   }
   ZoomOut() {
@@ -165,6 +166,7 @@ class Ball {
     this.UrlTransFlag = false;
     if (this.CheckTag("text")) {
       this.DrawBall.material = this.BeforeMaterial;
+      this.DrawBall.TextLabel.element.style.opacity = 0;
     }
   }
   UrlTransition() {
@@ -213,21 +215,22 @@ class DrawManager extends BallSetting {
     this.camera;
     this.composer;
     this.canvas;
+    this.BallBasicMaterial = new THREE.MeshBasicMaterial( { color: 0xdddddd, fog: true } )
 
     // init.
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
     this.canvas = document.getElementById('canvas');
-    this.renderer = new THREE.WebGLRenderer();
+    this.renderer = new THREE.WebGLRenderer({antialias: false});
     this.renderer.setSize( window.innerWidth, window.innerHeight );
     this.canvas.appendChild( this.renderer.domElement );
-    // this.camera.position.z = 30;
     this.camera.position.set( 0, 0, 30 );
 
     // set postprocessing.
     this.composer = new THREE.EffectComposer(this.renderer);
     this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
-    this.composer.addPass(new THREE.BloomPass(1.0, 25, 0.1, 1024));//512));
+    this.composer.addPass(new THREE.BloomPass(1.5, 25, 0.3, 2048));//1024));//512));
+    this.scene.fog = new THREE.FogExp2(0x0000ff, 0.00035);
 
     var toScreen = new THREE.ShaderPass(THREE.CopyShader);
     toScreen.renderToScreen = true;
@@ -236,8 +239,8 @@ class DrawManager extends BallSetting {
   Draw() {
     // ボールを作成.
     var textGeo = new THREE.CircleGeometry( this.BallRadius, 32 );
-    var material = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
-    var mshBall = new THREE.Mesh( textGeo, material );
+    // var material = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
+    var mshBall = new THREE.Mesh( textGeo, this.BallBasicMaterial );
     // add.
     this.scene.add( mshBall );
     return mshBall;
@@ -270,11 +273,11 @@ class DrawManager extends BallSetting {
     var mshBall = new THREE.Mesh( textGeo, material );
 
     // create text.
-    var text = this.CreateTextLabel();
-    text.setHTML("Label Test-----------------------------");
-    text.setParent(mshBall);
-    mshBall.TextLabel = text;
-    this.canvas.appendChild(text.element);
+    var textLabel = this.CreateTextLabel();
+    textLabel.setHTML(text);
+    textLabel.setParent(mshBall);
+    mshBall.TextLabel = textLabel;
+    this.canvas.appendChild(textLabel.element);
 
     // add.
     this.scene.add( mshBall );
@@ -308,8 +311,8 @@ class DrawManager extends BallSetting {
         }
 
         var coords2d = this.get2DCoords(this.position, _this.camera);
-        this.element.style.left = coords2d.x + 'px';
-        this.element.style.top = coords2d.y + 'px';
+        this.element.style.left = -50 + coords2d.x + 'px';
+        this.element.style.top = -60 + coords2d.y + 'px';
       },
       get2DCoords: function(position, camera) {
         var vector = position.project(camera);
@@ -453,22 +456,21 @@ function PhysicsAnimate(time){
   WorldManagerIns.BallSpeedControl();
 
   // ここで物理計算オブジェクトの座標と描画用オブジェクトの座標を一致させる.
-  for (i=0;i<WorldManagerIns.BallList.length;i++) {
-    WorldManagerIns.BallList[i].DrawBall.position.x = WorldManagerIns.BallList[i].PhyBall.position[0];
-    WorldManagerIns.BallList[i].DrawBall.position.y = WorldManagerIns.BallList[i].PhyBall.position[1];
-  }
+  WorldManagerIns.BallList.forEach(function( ball ) {
+    ball.DrawBall.position.x = ball.PhyBall.position[0];
+    ball.DrawBall.position.y = ball.PhyBall.position[1];
+
+    // textタグのボールのテキスト位置を更新する.
+    if (ball.CheckTag("text")) {
+      ball.DrawBall.TextLabel.updatePosition();
+    }
+  });
 }
 // 描画計算..
 function DrawAnimate(){
   requestAnimationFrame(DrawAnimate);
   // レンダリングする.
   var drawManagerIns = WorldManagerIns.DrawManagerIns;
-  // drawManagerIns.renderer.render(drawManagerIns.scene, drawManagerIns.camera);
-  for (var i = 0; i < WorldManagerIns.BallList.length; i++) {
-    if (WorldManagerIns.BallList[i].CheckTag("text")) {
-      WorldManagerIns.BallList[i].DrawBall.TextLabel.updatePosition();
-    }
-  }
   drawManagerIns.composer.render();
 }
 
