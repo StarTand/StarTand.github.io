@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>StarTand_p2.js</title>
+    <meta charset="utf-8">
+    <!-- No zooming, and device width viewport -->
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+    <!-- include the physics library -->
+    <script src="js/p2.min.js"></script>
+    <link rel="stylesheet" href="css/star.css">
+  </head>
+  <body>
+    <div id="counter"></div>
+    <script src="js/three.min.js"></script>
+    <script src="js/postprocessing/EffectComposer.js"></script>
+    <script src="js/postprocessing/RenderPass.js"></script>
+    <script src="js/postprocessing/BloomPass.js"></script>
+    <script src="js/shaders/CopyShader.js"></script>
+    <script src="js/postprocessing/MaskPass.js"></script>
+    <script src="js/postprocessing/ShaderPass.js"></script>
+    <script src="js/shaders/ConvolutionShader.js"></script>
+		<script>
+      // set env.
+			var scene = new THREE.Scene();
+			var camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+      camera.position.z = 20;
+
+			var renderer = new THREE.WebGLRenderer();
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			document.body.appendChild( renderer.domElement );
+
+      // ポストプロセスの設定
+      var composer = new THREE.EffectComposer(renderer);
+      composer.addPass(new THREE.RenderPass(scene, camera));
+      composer.addPass(new THREE.BloomPass(4.0, 25, 2.0, 512));
+      var toScreen = new THREE.ShaderPass(THREE.CopyShader);
+      toScreen.renderToScreen = true;
+      composer.addPass(toScreen);
+
+      var loader = new THREE.FontLoader();
+			loader.load( 'fonts/helvetiker_regular.typeface.json', function ( font ) {
+				init( font, scene );
+			} );
+      function init( font, scene ) {
+				// Get text from hash
+
+				var theText = "Hello three.js! :)";
+
+				var hash = document.location.hash.substr( 1 );
+				if ( hash.length !== 0 ) {
+					theText = hash;
+				}
+
+				var geometry = new THREE.TextGeometry( theText, {
+					font: font,
+					size: 80,
+					height: 20,
+					curveSegments: 2
+				});
+				geometry.computeBoundingBox();
+
+				var centerOffset = -0.5 * ( geometry.boundingBox.max.x - geometry.boundingBox.min.x );
+				var materials = [
+					new THREE.MeshBasicMaterial( { color: Math.random() * 0xffffff, overdraw: 0.5 } ),
+					new THREE.MeshBasicMaterial( { color: 0x000000, overdraw: 0.5 } )
+				];
+
+				var mesh = new THREE.Mesh( geometry, materials );
+				mesh.position.x = centerOffset;
+				mesh.position.y = 0;
+				mesh.position.z = 0;
+				mesh.rotation.x = 0;
+				mesh.rotation.y = Math.PI * 2;
+
+				group = new THREE.Group();
+				group.add( mesh );
+				scene.add( group );
+
+				// renderer = new THREE.CanvasRenderer();
+				// renderer.setPixelRatio( window.devicePixelRatio );
+				// renderer.setSize( window.innerWidth, window.innerHeight );
+				// container.appendChild( renderer.domElement );
+			}
+
+      // rendering.
+			var render = function () {
+				requestAnimationFrame( render );
+
+				// cube.rotation.x += 0.1;
+				// cube.rotation.y += 0.1;
+
+				// renderer.render(scene, camera);
+        composer.render();
+			};
+
+			render();
+		</script>
+	</body>
+</html>

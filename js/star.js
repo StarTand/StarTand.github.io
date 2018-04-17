@@ -27,25 +27,27 @@ class WorldManager {
   }
   // ボールを生成する.
   CreateBalls() {
+    // declare variable.
     var ballCount = 0;
     var ballMax = 5;
     var phyBall;
     var drawBall;
-    var textInfo;
     var baseMaterial = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
 
-    // --- info.
-    textInfo = "説明が入ります.";
+    // info.
+    var textInfo = "説明が入ります.";
     phyBall = this.PhysicsManagerIns.CreateBall(this.World);
     drawBall = this.DrawManagerIns.Draw_Text('./image/info.png', textInfo);
     this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['info', 'text'], '', textInfo, baseMaterial));
-    // --- github.
+
+    // github.
     phyBall = this.PhysicsManagerIns.CreateBall(this.World);
     drawBall = this.DrawManagerIns.Draw_Service('./image/github2.png');
     this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['service'],
       'https://github.com/StarTand', '', baseMaterial
     ));
-    // --- create other balls.
+
+    // create other balls.
     while (ballCount < ballMax) {
       phyBall = this.PhysicsManagerIns.CreateBall(this.World);
       drawBall = this.DrawManagerIns.Draw();
@@ -137,6 +139,7 @@ class Ball {
     this.BeforeMaterial = this.DrawBall.material;
     this.AfterMaterial = afterMaterial;
     this.ZoomFlag = false;
+    this.Text = text;
     this.UrlTransFlag = false; // url遷移した際に真にする.
   }
   CheckTag(tagName) {
@@ -152,6 +155,7 @@ class Ball {
 
     if (this.CheckTag("text")) {
       this.DrawBall.material = this.AfterMaterial;
+
     }
   }
   ZoomOut() {
@@ -208,14 +212,17 @@ class DrawManager extends BallSetting {
     this.scene;
     this.camera;
     this.composer;
+    this.canvas;
 
     // init.
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera( 75, window.innerWidth/window.innerHeight, 0.1, 1000 );
+    this.canvas = document.getElementById('canvas');
     this.renderer = new THREE.WebGLRenderer();
     this.renderer.setSize( window.innerWidth, window.innerHeight );
-    document.body.appendChild( this.renderer.domElement );
-    this.camera.position.z = 30;
+    this.canvas.appendChild( this.renderer.domElement );
+    // this.camera.position.z = 30;
+    this.camera.position.set( 0, 0, 30 );
 
     // set postprocessing.
     this.composer = new THREE.EffectComposer(this.renderer);
@@ -225,13 +232,12 @@ class DrawManager extends BallSetting {
     var toScreen = new THREE.ShaderPass(THREE.CopyShader);
     toScreen.renderToScreen = true;
     this.composer.addPass(toScreen);
-
   }
   Draw() {
     // ボールを作成.
-    var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
+    var textGeo = new THREE.CircleGeometry( this.BallRadius, 32 );
     var material = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
-    var mshBall = new THREE.Mesh( geometry, material );
+    var mshBall = new THREE.Mesh( textGeo, material );
     // add.
     this.scene.add( mshBall );
     return mshBall;
@@ -251,29 +257,76 @@ class DrawManager extends BallSetting {
     this.scene.add( mshBall );
     return mshBall;
   }
-  Draw_Text(befImagePath, aftImagePath, text) {
-    // github log.
+  Draw_Text(befImagePath, text) {
+    // load texture.
     var texLoader = new THREE.TextureLoader();
     texLoader.crossOrigin = '*';
     var befTexture = texLoader.load(befImagePath);
+    var scene = this.scene;
 
     // create ball.
-    var geometry = new THREE.CircleGeometry( this.BallRadius, 32 );
+    var textGeo = new THREE.CircleGeometry( this.BallRadius, 32 );
     var material = new THREE.MeshBasicMaterial( { map: befTexture } );
-    var mshBall = new THREE.Mesh( geometry, material );
+    var mshBall = new THREE.Mesh( textGeo, material );
+
+    // create text.
+    var text = this.CreateTextLabel();
+    text.setHTML("Label Test-----------------------------");
+    text.setParent(mshBall);
+    mshBall.TextLabel = text;
+    this.canvas.appendChild(text.element);
 
     // add.
     this.scene.add( mshBall );
     return mshBall;
   }
+  CreateTextLabel() {
+    var div = document.createElement('div');
+    div.className = 'text-label';
+    div.style.position = 'absolute';
+    div.style.width = 100;
+    div.style.height = 100;
+    div.innerHTML = "hi there!";
+    div.style.top = -1000;
+    div.style.left = -1000;
+
+    var _this = this;
+
+    return {
+      element: div,
+      parent: false,
+      position: new THREE.Vector3(0,0,0),
+      setHTML: function(html) {
+        this.element.innerHTML = html;
+      },
+      setParent: function(threejsobj) {
+        this.parent = threejsobj;
+      },
+      updatePosition: function() {
+        if(parent) {
+          this.position.copy(this.parent.position);
+        }
+
+        var coords2d = this.get2DCoords(this.position, _this.camera);
+        this.element.style.left = coords2d.x + 'px';
+        this.element.style.top = coords2d.y + 'px';
+      },
+      get2DCoords: function(position, camera) {
+        var vector = position.project(camera);
+        vector.x = (vector.x + 1)/2 * window.innerWidth;
+        vector.y = -(vector.y - 1)/2 * window.innerHeight;
+        return vector;
+      }
+    };
+  }
 }
 // マウスイベントを管理するクラス.
 class MouseManager {
   constructor() {
-    this.holdFlag;   // ボールをドラッグしたかどうか判定する.
-    this.holdBall;   // ドラッグしているボールを格納する.
-    this.selectBall; // ダブルクリックしたボールの情報を格納する.
-    this.mousePosition = new THREE.Vector2();
+    this.HoldFlag;   // ボールをドラッグしたかどうか判定する.
+    this.HoldBall;   // ドラッグしているボールを格納する.
+    this.SelectBall; // ダブルクリックしたボールの情報を格納する.
+    this.MousePosition = new THREE.Vector2();
   }
   MouseDown(cX, cY, worldManagerIns){
 
@@ -284,40 +337,40 @@ class MouseManager {
     // ボールをクリックしている時.
     if (intersects[0]) {
       // マウス位置をワールド座標に変換して保持する.
-      this.mousePosition = this.CameraTransformToWorld(cX, cY
+      this.MousePosition = this.CameraTransformToWorld(cX, cY
         , worldManagerIns.DrawManagerIns.camera);
 
       // どのボールをクリックしたか判定する.
-      this.holdBall = worldManagerIns.CheckBallId(intersects[0].object);
+      this.HoldBall = worldManagerIns.CheckBallId(intersects[0].object);
 
       // tagがserviceであり、拡大中かつ、url遷移前のときにurl遷移する.
-      if (this.holdBall.CheckTag("service") && this.holdBall.ZoomFlag && !this.holdBall.UrlTransFlag) {
-        this.holdBall.UrlTransition();
+      if (this.HoldBall.CheckTag("service") && this.HoldBall.ZoomFlag && !this.HoldBall.UrlTransFlag) {
+        this.HoldBall.UrlTransition();
       }
     }
   }
   MouseWhileClick() {
-    if (this.holdBall) {
+    if (this.HoldBall) {
       // position.
-      this.holdBall.PhyBall.position[0] = this.mousePosition.x;
-      this.holdBall.PhyBall.position[1] = this.mousePosition.y;
+      this.HoldBall.PhyBall.position[0] = this.MousePosition.x;
+      this.HoldBall.PhyBall.position[1] = this.MousePosition.y;
       // velocity.
-      // this.holdBall.PhyBall.velocity[0] = this.mousePosition.x * 3;
-      // this.holdBall.PhyBall.velocity[1] = this.mousePosition.y * 3;
+      // this.HoldBall.PhyBall.velocity[0] = this.MousePosition.x * 3;
+      // this.HoldBall.PhyBall.velocity[1] = this.MousePosition.y * 3;
     }
   }
   MouseMove(cX, cY, worldManagerIns) {
-    this.holdFlag = true;
+    this.HoldFlag = true;
     // マウスクリック時のX,y座標
-    this.mousePosition = this.CameraTransformToWorld(cX, cY, worldManagerIns.DrawManagerIns.camera);
+    this.MousePosition = this.CameraTransformToWorld(cX, cY, worldManagerIns.DrawManagerIns.camera);
 
-    if (this.holdBall) {
-      // this.holdBall.PhyBall.position[0] = this.mousePosition.x;
-      // this.holdBall.PhyBall.position[1] = this.mousePosition.y;
+    if (this.HoldBall) {
+      // this.HoldBall.PhyBall.position[0] = this.MousePosition.x;
+      // this.HoldBall.PhyBall.position[1] = this.MousePosition.y;
     }
   }
   MouseUp() {
-    this.holdBall = null;
+    this.HoldBall = null;
   }
   MouseDblClick(cX, cY, worldManagerIns){
     // オブジェクトの取得
@@ -327,17 +380,19 @@ class MouseManager {
     // ボールをダブルクリックしていれば.
     if (intersects[0]) {
       // BallIdを照合.
-      var _selectBall = worldManagerIns.CheckBallId(intersects[0].object);
+      var selectBall = worldManagerIns.CheckBallId(intersects[0].object);
 
       // 物理オブジェクトと描画オブジェクトを2倍に拡大.
-      _selectBall.ZoomIn();
+      selectBall.ZoomIn();
 
       // 選択していたボールは縮小する.
-      if (this.selectBall) {
-        this.selectBall.ZoomOut();
+      if (this.SelectBall) {
+        this.SelectBall.ZoomOut();
       }
       // .
-      this.selectBall = _selectBall;
+      this.SelectBall = selectBall;
+
+      console.log(this.SelectBall);
     }
   }
   CameraTransformToWorld(cX, cY, camera) {
@@ -409,6 +464,11 @@ function DrawAnimate(){
   // レンダリングする.
   var drawManagerIns = WorldManagerIns.DrawManagerIns;
   // drawManagerIns.renderer.render(drawManagerIns.scene, drawManagerIns.camera);
+  for (var i = 0; i < WorldManagerIns.BallList.length; i++) {
+    if (WorldManagerIns.BallList[i].CheckTag("text")) {
+      WorldManagerIns.BallList[i].DrawBall.TextLabel.updatePosition();
+    }
+  }
   drawManagerIns.composer.render();
 }
 
