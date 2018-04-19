@@ -33,6 +33,12 @@ class WorldManager {
     var phyBall;
     var drawBall;
     var baseMaterial = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
+    // set sertvice baseMaterial.
+    // var texLoader = new THREE.TextureLoader();
+    // texLoader.crossOrigin = '*';
+    // var texture = texLoader.load('./image/Transition.png');
+    var baseServiceTexture = new THREE.TextureLoader().load('./image/Transition.png');
+    var baseServiceMaterial = new THREE.MeshBasicMaterial( { map: baseServiceTexture } );
 
     // info.
     var textInfo =
@@ -46,8 +52,16 @@ class WorldManager {
     phyBall = this.PhysicsManagerIns.CreateBall(this.World);
     drawBall = this.DrawManagerIns.Draw_Service('./image/github2.png');
     this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['service'],
-      'https://github.com/StarTand', '', baseMaterial
+      'https://github.com/StarTand', '', baseServiceMaterial
     ));
+
+    // mail.
+    var textInfo = "<a href=\"mailto:takeyouthwana@gmail.com\"><p>takeyouthwana@gmail.com</p></a>";
+    phyBall = this.PhysicsManagerIns.CreateBall(this.World);
+    drawBall = this.DrawManagerIns.Draw_Text('./image/mail.png', textInfo);
+    this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['info', 'text', 'center'], '', textInfo, baseMaterial));
+    this.BallList[ballCount-1].TextOffsetX = -55;
+    this.BallList[ballCount-1].TextOffsetY = -15;
 
     // create other balls.
     while (ballCount < ballMax) {
@@ -142,6 +156,8 @@ class Ball {
     this.AfterMaterial = afterMaterial;
     this.ZoomFlag = false;
     this.UrlTransFlag = false; // url遷移した際に真にする.
+    this.TextOffsetX = -50;
+    this.TextOffsetY = -60;
   }
   CheckTag(tagName) {
     var exist = this.TagList.some(function(value) {
@@ -305,14 +321,14 @@ class DrawManager extends BallSetting {
       setParent: function(threejsobj) {
         this.parent = threejsobj;
       },
-      updatePosition: function() {
+      updatePosition: function(offsetX, offsetY) {
         if(parent) {
           this.position.copy(this.parent.position);
         }
 
         var coords2d = this.get2DCoords(this.position, _this.camera);
-        this.element.style.left = -50 + coords2d.x + 'px';
-        this.element.style.top = -60 + coords2d.y + 'px';
+        this.element.style.left = offsetX + coords2d.x + 'px';
+        this.element.style.top = offsetY + coords2d.y + 'px';
       },
       get2DCoords: function(position, camera) {
         var vector = position.project(camera);
@@ -462,7 +478,7 @@ function PhysicsAnimate(time){
 
     // textタグのボールのテキスト位置を更新する.
     if (ball.CheckTag("text")) {
-      ball.DrawBall.TextLabel.updatePosition();
+      ball.DrawBall.TextLabel.updatePosition(ball.TextOffsetX, ball.TextOffsetY);
     }
   });
 }
