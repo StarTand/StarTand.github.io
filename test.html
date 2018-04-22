@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>StarTand_p2.js</title>
+    <meta charset="utf-8">
+    <!-- No zooming, and device width viewport -->
+    <meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+
+    <!-- include the physics library -->
+    <script src="js/p2.min.js"></script>
+    <link rel="stylesheet" href="css/star.css">
+  </head>
+  <body>
+    <div id="counter"></div>
+    <script src="js/three.min.js"></script>
+    <script src="js/postprocessing/EffectComposer.js"></script>
+    <script src="js/postprocessing/RenderPass.js"></script>
+    <script src="js/postprocessing/BloomPass.js"></script>
+    <script src="js/shaders/CopyShader.js"></script>
+    <script src="js/postprocessing/MaskPass.js"></script>
+    <script src="js/postprocessing/ShaderPass.js"></script>
+    <script src="js/shaders/ConvolutionShader.js"></script>
+		<script>
+      // set env.
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera( 45, window.innerWidth/window.innerHeight, 0.1, 1000 );
+      const renderer = new THREE.WebGLRenderer();
+      const composer = new THREE.EffectComposer(renderer);
+      SetEnv(scene, camera, renderer, composer);
+
+      // 形状データを作成
+      const geometry = new THREE.Geometry();
+      // 配置する範囲
+      const SIZE = 3000;
+      // 配置する個数
+      const LENGTH = 1000;
+      for (let i = 0; i < LENGTH; i++) {
+        geometry.vertices.push(new THREE.Vector3(
+          SIZE * (Math.random() - 0.5),
+          SIZE * (Math.random() - 0.5),
+          SIZE * (Math.random() - 0.5),
+        ));
+      }
+      // マテリアルを作成
+      const material = new THREE.PointsMaterial({
+        map: texture,
+        size: 3, // サイズ
+        blending: THREE.AdditiveBlending, // ブレンドモード(加算)
+        transparent: true, // 透過true
+        depthTest: false // 物体が重なった時に後ろにあるものを描画するかしないか
+      });
+      const mesh = new THREE.Points(geometry, material);
+      scene.add(mesh);
+
+      // rendering.
+			const render = function () {
+        camera.rotation.x += 0.0025;
+        camera.rotation.y += 0.005;
+				requestAnimationFrame( render );
+        composer.render();
+			};
+			render();
+
+      function SetEnv(scene, camera, renderer, composer) {
+        // camera.position.z = 20;
+
+  			renderer.setSize( window.innerWidth, window.innerHeight );
+  			document.body.appendChild( renderer.domElement );
+
+        // ポストプロセスの設定
+        composer.addPass(new THREE.RenderPass(scene, camera));
+        // composer.addPass(new THREE.BloomPass(1.0, 25, 2.0, 512));
+        const toScreen = new THREE.ShaderPass(THREE.CopyShader);
+        toScreen.renderToScreen = true;
+        composer.addPass(toScreen);
+      }
+		</script>
+	</body>
+</html>

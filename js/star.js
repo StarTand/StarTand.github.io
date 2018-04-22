@@ -24,6 +24,9 @@ class WorldManager {
     this.CreatePlane([0, -this.GameHeight/2], 0);
     this.CreatePlane([-this.GameWidth/2, 0], -Math.PI / 2); // Left
     this.CreatePlane([this.GameWidth/2, 0], Math.PI / 2); // Right
+
+    // background.
+    this.DrawManagerIns.CreateBackground();
   }
   // ボールを生成する.
   CreateBalls() {
@@ -242,11 +245,23 @@ class DrawManager extends BallSetting {
     this.canvas.appendChild( this.renderer.domElement );
     this.camera.position.set( 0, 0, 30 );
 
+    // set light.
+		this.scene.add( new THREE.AmbientLight( 0x444444 ) );
+
+		var light1 = new THREE.DirectionalLight( 0xffffff, 0.5 );
+		light1.position.set( 0, 0, 100 );
+		this.scene.add( light1 );
+
+		var light2 = new THREE.DirectionalLight( 0x444477, 3.5 );
+		light2.position.set( 0, 0, 100 );
+		this.scene.add( light2 );
+
+
     // set postprocessing.
     this.composer = new THREE.EffectComposer(this.renderer);
     this.composer.addPass(new THREE.RenderPass(this.scene, this.camera));
-    this.composer.addPass(new THREE.BloomPass(1.5, 25, 0.3, 2048));//1024));//512));
-    this.scene.fog = new THREE.FogExp2(0x0000ff, 0.00035);
+    this.composer.addPass(new THREE.BloomPass(1.5, 25, 0.4, 2048));//1024));//512));
+    this.scene.fog = new THREE.FogExp2(0x0000ff, 0.0035);
 
     var toScreen = new THREE.ShaderPass(THREE.CopyShader);
     toScreen.renderToScreen = true;
@@ -337,6 +352,108 @@ class DrawManager extends BallSetting {
         return vector;
       }
     };
+  }
+  // create background triangles.
+  CreateBackground() {
+    var triangles = 5000;
+
+    var geometry = new THREE.BufferGeometry();
+
+    var positions = [];
+    var normals = [];
+    var colors = [];
+
+    var color = new THREE.Color();
+
+    // var n = 800, n2 = n / 2;	// triangles spread in the cube
+    var n = 100, n2 = n / 2;	// triangles spread in the cube
+    var d = 2, d2 = d / 2;	// individual triangle size
+
+    var pA = new THREE.Vector3();
+    var pB = new THREE.Vector3();
+    var pC = new THREE.Vector3();
+
+    var cb = new THREE.Vector3();
+    var ab = new THREE.Vector3();
+
+    for ( var i = 0; i < triangles; i ++ ) {
+
+      // positions
+
+      var x = Math.random() * n - n2;
+      var y = Math.random() * n - n2;
+      var z = Math.random() * n - n2 - 60;
+
+      var ax = x + Math.random() * d - d2;
+      var ay = y + Math.random() * d - d2;
+      var az = z + Math.random() * d - d2;
+
+      var bx = x + Math.random() * d - d2;
+      var by = y + Math.random() * d - d2;
+      var bz = z + Math.random() * d - d2;
+
+      var cx = x + Math.random() * d - d2;
+      var cy = y + Math.random() * d - d2;
+      var cz = z + Math.random() * d - d2;
+
+      positions.push( ax, ay, az );
+      positions.push( bx, by, bz );
+      positions.push( cx, cy, cz );
+
+      // flat face normals
+
+      pA.set( ax, ay, az );
+      pB.set( bx, by, bz );
+      pC.set( cx, cy, cz );
+
+      cb.subVectors( pC, pB );
+      ab.subVectors( pA, pB );
+      cb.cross( ab );
+
+      cb.normalize();
+
+      var nx = cb.x;
+      var ny = cb.y;
+      var nz = cb.z;
+
+      normals.push( nx * 32767, ny * 32767, nz * 32767 );
+      normals.push( nx * 32767, ny * 32767, nz * 32767 );
+      normals.push( nx * 32767, ny * 32767, nz * 32767 );
+
+      // colors
+
+      var vx = ( x / n ) + 0.5;
+      var vy = ( y / n ) + 0.5;
+      var vz = ( z / n ) + 0.5;
+
+      color.setRGB( vx, vy, vz );
+
+      colors.push( color.r * 15, color.g * 15, color.b * 45 );
+      colors.push( color.r * 15, color.g * 15, color.b * 45 );
+      colors.push( color.r * 15, color.g * 15, color.b * 45 );
+
+    }
+
+    var positionAttribute = new THREE.Float32BufferAttribute( positions, 3 );
+    var normalAttribute = new THREE.Int16BufferAttribute( normals, 3 );
+    var colorAttribute = new THREE.Uint8BufferAttribute( colors, 3 );
+
+    normalAttribute.normalized = true; // this will map the buffer values to 0.0f - +1.0f in the shader
+    colorAttribute.normalized = true;
+
+    geometry.addAttribute( 'position', positionAttribute );
+    geometry.addAttribute( 'normal', normalAttribute );
+    geometry.addAttribute( 'color', colorAttribute );
+
+    geometry.computeBoundingSphere();
+
+    var material = new THREE.MeshPhongMaterial( {
+      color: 0xaaaaaa, specular: 0x0000ee, shininess: 550, opacity: 0.6,
+			transparent: true, side: THREE.DoubleSide, vertexColors: THREE.VertexColors
+    });
+
+    var mesh = new THREE.Mesh( geometry, material );
+    this.scene.add( mesh );
   }
 }
 // マウスイベントを管理するクラス.
