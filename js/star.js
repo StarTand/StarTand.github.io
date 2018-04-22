@@ -31,22 +31,22 @@ class WorldManager {
   // ボールを生成する.
   CreateBalls() {
     // declare variable.
-    var ballCount = 0;
-    var ballMax = 5;
-    var phyBall;
-    var drawBall;
-    var baseMaterial = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
+    let ballCount = 0;
+    const ballMax = 5;
+    let phyBall;
+    let drawBall;
+    let textInfo;
+    const baseMaterial = new THREE.MeshBasicMaterial( { color: 0xdddddd } );
     // set sertvice baseMaterial.
-    // var texLoader = new THREE.TextureLoader();
+    // const texLoader = new THREE.TextureLoader();
     // texLoader.crossOrigin = '*';
-    // var texture = texLoader.load('./image/Transition.png');
-    var baseServiceTexture = new THREE.TextureLoader().load('./image/Transition.png');
-    var baseServiceMaterial = new THREE.MeshBasicMaterial( { map: baseServiceTexture } );
+    // const texture = texLoader.load('./image/Transition.png');
+    const baseServiceTexture = new THREE.TextureLoader().load('./image/Transition.png');
+    const baseServiceMaterial = new THREE.MeshBasicMaterial( { map: baseServiceTexture } );
 
     // info.
-    var textInfo =
-        "円形のUIを使ったポートフォリオサイトのようなものを目指して製作中のサイトです.<br>"
-      + "描画用にthree.js,物理演算でp2.jsを利用しています.";
+    textInfo = "円形のUIを使ったポートフォリオサイトのようなものを目指して製作中のサイトです.<br>"
+             + "描画用にthree.js,物理演算でp2.jsを利用しています.";
     phyBall = this.PhysicsManagerIns.CreateBall(this.World);
     drawBall = this.DrawManagerIns.Draw_Text('./image/info.png', textInfo);
     this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['info', 'text'], '', textInfo, baseMaterial));
@@ -59,7 +59,7 @@ class WorldManager {
     ));
 
     // mail.
-    var textInfo = "<a href=\"mailto:takeyouthwana@gmail.com\"><p>takeyouthwana@gmail.com</p></a>";
+    textInfo = "<a href=\"mailto:takeyouthwana@gmail.com\"><p>takeyouthwana@gmail.com</p></a>";
     phyBall = this.PhysicsManagerIns.CreateBall(this.World);
     drawBall = this.DrawManagerIns.Draw_Text('./image/mail.png', textInfo);
     this.BallList.push(new Ball(ballCount++, phyBall, drawBall, ['info', 'text', 'center'], '', textInfo, baseMaterial));
@@ -75,7 +75,7 @@ class WorldManager {
       ));
     }
     // add force to ball.
-    for (var i = 0; i<this.BallList.lenght;i++) {
+    for (const i = 0; i<this.BallList.lenght;i++) {
       this.PhysicsManagerIns.AddForce(this.BallList[i].PhyBall);
     }
   }
@@ -173,8 +173,10 @@ class Ball {
     this.DrawBall.scale.set(2,2,1);
     this.ZoomFlag = true;
 
-    if (this.CheckTag("text")) {
+    if (this.CheckTag("text") || this.CheckTag("service")) {
       this.DrawBall.material = this.AfterMaterial;
+    }
+    if (this.CheckTag("text")) {
       this.DrawBall.TextLabel.element.style.opacity = 1;
     }
   }
@@ -183,8 +185,11 @@ class Ball {
     this.DrawBall.scale.set(1,1,1);
     this.ZoomFlag = false;
     this.UrlTransFlag = false;
-    if (this.CheckTag("text")) {
+
+    if (this.CheckTag("text") || this.CheckTag("service")) {
       this.DrawBall.material = this.BeforeMaterial;
+    }
+    if (this.CheckTag("text")) {
       this.DrawBall.TextLabel.element.style.opacity = 0;
     }
   }
